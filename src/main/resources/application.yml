@@ -1,5 +1,8 @@
 spring:
   application:
     name: vista360
+  mvc:
+    problemdetails:
+      enabled: true
   flyway:
     enabled: false

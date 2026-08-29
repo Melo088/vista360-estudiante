@@ -1,0 +1,41 @@
+# Build de Maven
+target/
+*.class
+HELP.md
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Entorno y secretos
+.env
+.env.local
+application-local.yml
+*-local.properties
+
+# Base de datos local
+*.db
+*.mv.db
+*.trace.db
+data/
+
+# Logs
+*.log
+logs/
+
+# Editores
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.classpath
+.project
+
+# Fedora / KDE
+.directory
+.kate-swp
+*~
+
+# personal conf claude
+.claude/settings.local.json

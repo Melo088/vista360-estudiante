@@ -14,7 +14,9 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 
 /**
- * La restriccion unica sobre (nrc, periodo) del esquema es lo que
+ * El grupo como fila, no como atributo repetido en cada inscripcion.
+ *
+ * <p>La restriccion unica sobre (nrc, periodo) del esquema es lo que
  * sostiene la promesa del contrato de que el NRC identifica el grupo dentro del periodo.
  */
 @Entity
@@ -22,9 +24,10 @@ import java.time.Instant;
 public class GrupoCurso {
 
     @Id
-    // El DDL esta en dialecto Oracle, donde todo entero es NUMBER, y H2 lo reporta como
-    // NUMERIC.
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    // El DDL esta en dialecto Oracle, donde todo entero es NUMBER, y H2 lo reporta como
+    // NUMERIC. Sin esto Hibernate esperaria BIGINT o INTEGER y la validacion del esquema
+    // fallaria al arrancar. Contra un Oracle real el dialecto ya haria esta correspondencia.
     @JdbcTypeCode(SqlTypes.NUMERIC)
     @Column(name = "id")
     private Long id;

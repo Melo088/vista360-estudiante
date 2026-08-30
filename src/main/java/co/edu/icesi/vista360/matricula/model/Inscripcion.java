@@ -21,12 +21,23 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
+/**
+ * Una inscripcion, no una asignatura (S-15).
+ *
+ * <p>Tres ejes independientes: el estado de la inscripcion, la escala con la que se califica
+ * y hasta donde llego la calificacion (S-14, S-16). Las invariantes que los relacionan viven
+ * en los CHECK del esquema y no aca, para que valgan tambien si el dato entra por el proceso
+ * de sincronizacion y no por esta entidad.
+ */
 @Entity
 @Table(name = "inscripcion")
 public class Inscripcion {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    // El DDL esta en dialecto Oracle, donde todo entero es NUMBER, y H2 lo reporta como
+    // NUMERIC. Sin esto Hibernate esperaria BIGINT o INTEGER y la validacion del esquema
+    // fallaria al arrancar. Contra un Oracle real el dialecto ya haria esta correspondencia.
     @JdbcTypeCode(SqlTypes.NUMERIC)
     @Column(name = "id")
     private Long id;
@@ -43,6 +54,7 @@ public class Inscripcion {
     @JoinColumn(name = "grupo_curso_id")
     private GrupoCurso grupoCurso;
 
+    /** Programa bajo el cual el ERP registro la inscripcion. La homologacion queda fuera. */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "programa_codigo")
     private Programa programa;
@@ -51,6 +63,7 @@ public class Inscripcion {
     @Column(name = "estado_inscripcion", nullable = false, length = 10)
     private EstadoInscripcion estadoInscripcion;
 
+    // El DATE de Oracle lleva hora, asi que H2 en MODE=Oracle lo reporta como TIMESTAMP.
     @JdbcTypeCode(SqlTypes.TIMESTAMP)
     @Column(name = "fecha_cancelacion")
     private LocalDate fechaCancelacion;
@@ -113,5 +126,10 @@ public class Inscripcion {
 
     public ResultadoAprobacion getResultado() {
         return resultado;
+    }
+
+    /** Hasta cuando esta al dia esta fila de la replica (S-02). */
+    public Instant getFechaCorte() {
+        return fechaCorte;
     }
 }

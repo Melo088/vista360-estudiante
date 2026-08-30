@@ -9,6 +9,12 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.time.LocalDate;
 
+/**
+ * Periodo academico.
+ *
+ * <p>Vigente es el que contiene la fecha de hoy y, si no hay ninguno porque el calendario
+ * esta entre semestres, el mas reciente (S-14, S-17).
+ */
 @Entity
 @Table(name = "periodo_academico")
 public class PeriodoAcademico {
@@ -17,6 +23,7 @@ public class PeriodoAcademico {
     @Column(name = "codigo", length = 6)
     private String codigo;
 
+    // El DATE de Oracle lleva hora, asi que H2 en MODE=Oracle lo reporta como TIMESTAMP.
     @JdbcTypeCode(SqlTypes.TIMESTAMP)
     @Column(name = "fecha_inicio", nullable = false)
     private LocalDate fechaInicio;

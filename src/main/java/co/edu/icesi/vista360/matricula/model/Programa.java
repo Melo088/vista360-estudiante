@@ -4,8 +4,11 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 
+/** Catalogo de programas academicos. Replica del ERP (S-01, S-12). */
 @Entity
 @Table(name = "programa")
 public class Programa {

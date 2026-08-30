@@ -10,6 +10,9 @@ import java.time.Instant;
 
 /**
  * Catalogo de asignaturas.
+ *
+ * <p>Sin programa a proposito: una misma asignatura la cursan estudiantes de programas
+ * distintos, asi que el programa pertenece a la inscripcion y no al catalogo (S-15).
  */
 @Entity
 @Table(name = "asignatura")

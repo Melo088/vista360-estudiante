@@ -4,9 +4,16 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 
-/** Replica de identidad academica. */
+/**
+ * Replica de identidad academica.
+ *
+ * <p>La llave es el codigo institucional y no el documento, que es credencial de acceso y no
+ * llave de negocio, y no debe viajar en las URL (S-01, S-11).
+ */
 @Entity
 @Table(name = "estudiante")
 public class Estudiante {

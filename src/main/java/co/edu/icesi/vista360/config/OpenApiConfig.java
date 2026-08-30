@@ -28,8 +28,9 @@ public class OpenApiConfig {
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
                                 .description("""
-                                        Token emitido por la plataforma de identidad. Se propaga el
-                                        token de quien originó la petición (S-10).""")))
+                                        Token de la plataforma de identidad, con sujeto y rol
+                                        (S-10, S-18). En local lo emite GET /dev/token, que solo
+                                        existe bajo el perfil de desarrollo.""")))
                 .addSecurityItem(new SecurityRequirement().addList(ESQUEMA_BEARER));
     }
 }

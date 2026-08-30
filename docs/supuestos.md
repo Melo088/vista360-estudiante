@@ -2,7 +2,7 @@
 
 Como se menciona, el enunciado dejó intencionalmente varias opciones abiertas. Este documento detalla dichas opciones, indicando dónde una elección específica modifica el diseño de la arquitectura o modelo de datos, junto con la justificación adoptada en cada caso.
 
-Cada supuesto recibe un identificador único que permite referenciarlos desde el resto de los entregables. Las cuatro primeras opciones condicionan a las demás, dado que definen qué información vive dentro de Vista 360°, de qué forma se entera la plataforma de un cambio en el ecosistema, por dónde viaja cada comunicación y qué se hace cuando el ERP no expone una API para los datos necesarios. Las otras diez opciones son independientes entre sí.
+Cada supuesto recibe un identificador único que permite referenciarlos desde el resto de los entregables. Las cuatro primeras opciones condicionan a las demás, dado que definen qué información vive dentro de Vista 360°, de qué forma se entera la plataforma de un cambio en el ecosistema, por dónde viaja cada comunicación y qué se hace cuando el ERP no expone una API para los datos necesarios. Las otras catorce opciones son independientes entre sí.
 
 ---
 
@@ -104,13 +104,13 @@ Cada supuesto recibe un identificador único que permite referenciarlos desde el
 
 ## S-09 · Doble Carrera
 
-**Supuesto.** El modelo de datos conserva el programa al que pertenece cada materia inscrita, pero el servicio consolida las materias del estudiante en un único listado por periodo académico, sin exigir el programa como parámetro. La educación continua queda fuera del alcance.
+**Supuesto.** El modelo de datos conserva el programa bajo el cual se realizó cada inscripción, pero el servicio consolida las materias del estudiante en un único listado por periodo académico, sin exigir el programa como parámetro. La educación continua queda fuera del alcance.
 
-**Fundamento.** En la realidad, un estudiante con doble titulación inscribe y cursa sus materias en un mismo calendario, y para él su carga del semestre es una sola. Por eso el contrato del servicio no debería obligarlo a preguntar dos veces ni a saber a qué programa pertenece cada materia. El modelo, en cambio, sí necesita conservar esa relación, porque sin ella no hay forma de explicar por qué un estudiante tiene dos matrículas abiertas ni de distinguir una misma materia cursada bajo dos programas distintos. Es decir que la consolidación es una decisión del contrato y no una simplificación del modelo. La educación continua se excluye por tener reglas de créditos y calificaciones totalmente distintas.
+**Fundamento.** En la realidad, un estudiante con doble titulación inscribe y cursa sus materias en un mismo calendario, y para él su carga del semestre es una sola. Por eso el contrato del servicio no debería obligarlo a preguntar dos veces ni a pasar el programa como parámetro. El modelo, en cambio, sí necesita conservar el programa de cada inscripción, porque la condición académica y el avance del plan se evalúan por programa y el ERP los declara por programa (S-08). Sin ese dato no se puede decir en cuál de los dos planes el estudiante va en riesgo, que es justamente lo que el equipo de acompañamiento necesita saber de un estudiante de doble titulación. La consolidación es entonces una decisión del contrato y no una simplificación del modelo. La educación continua se excluye por tener reglas de créditos y calificaciones totalmente distintas.
 
 **Si resultara falso.** Si la universidad manejara los dobles programas completamente aislados, con calendarios o reglas de calificación propias, el servicio requeriría recibir el identificador del programa como parámetro adicional para saber qué lista devolver, y la consolidación por periodo dejaría de tener sentido.
 
-**Depende de este supuesto.** El modelo de matrícula y el contrato del servicio de la Parte 2.
+**Depende de este supuesto.** El modelo de matrícula y el contrato del servicio de la Parte 2. El S-15 fija cuántas inscripciones admite una asignatura por periodo y qué declara el programa de cada una.
 
 ---
 
@@ -171,6 +171,62 @@ Cada supuesto recibe un identificador único que permite referenciarlos desde el
 **Si resultara falso.** Si la universidad exigiera que el servicio retorne únicamente las inscripciones activas por defecto, habría que agregar un parámetro explícito de filtrado. Si "matriculadas" implicara el historial de toda la carrera, se requeriría un endpoint distinto y paginado.
 
 **Depende de este supuesto.** El contrato del servicio de la Parte 2, el modelo de datos que lo soporta y la capacidad de detectar cancelaciones como señal de alerta temprana.
+
+---
+
+## S-15 · Unicidad de la inscripción y qué programa declara
+
+**Supuesto.** Un estudiante inscribe una asignatura una sola vez por periodo, aunque curse dos programas y la asignatura cuente para ambos. La clave natural de la inscripción es (estudiante, periodo, asignatura) y es única. El programa que la inscripción declara es aquel bajo el cual el ERP la registró; si el ERP no registrara ninguno, se asume el programa principal de la matrícula. La homologación entre programas queda fuera de alcance.
+
+**Fundamento.** Cursar dos veces la misma asignatura en un mismo semestre no ocurre en la práctica, así que admitirlo solo abriría la puerta a datos sucios que llegan del ERP sin que nada los detenga. La restricción se declara en el esquema y no en el código, para que valga también cuando el dato entre por el proceso de sincronización. Que una asignatura cuente para los dos planes es una equivalencia entre programas, un cálculo que le pertenece al ERP.
+
+El programa se conserva porque la condición académica y el avance se miden por plan (S-08, S-09), pero pasa a declarar un solo valor. Los programas del estudiante viven en la matrícula, con uno marcado como principal, que es sobre el que el ERP calcula semestre y promedio. Esa separación hace visible una doble titulación aunque uno de los dos programas no tenga inscripciones ese semestre, caso que no se deduce de la lista de materias.
+
+**Si resultara falso.** Si se admitiera inscribir la misma asignatura bajo dos programas en un periodo, la clave pasa a incluir el programa y el consumidor deja de poder indexar la respuesta por código de asignatura sin perder filas. Aflojar una restricción única es una migración barata; apretarla después, con datos cargados, no lo es.
+
+**Depende de este supuesto.** La clave de la tabla de inscripción, el campo de programa del contrato y el listado de programas de la matrícula.
+
+---
+
+## S-16 · Escala de calificación
+
+**Supuesto.** No todas las asignaturas se califican con nota numérica. La escala se registra como un eje propio de la inscripción, con dos valores: numérica, de 0.0 a 5.0, y aprobación, que da un resultado cualitativo y nunca una nota. La escala de aprobación admite calificación pendiente o definitiva, pero no parcial.
+
+**Fundamento.** El balance académico de la Universidad muestra varias asignaturas calificadas como aprobado en vez de un número. Un modelo con una sola columna numérica no puede escribir ese hecho, así que lo perdería o lo falsearía con un valor inventado.
+
+La escala se declara como eje separado y no se deduce de cuál campo viene lleno, porque se conoce al inscribir, antes de que exista calificación alguna. Deducirla dejaría a una materia pendiente sin forma de decir qué tipo de calificación va a recibir. Y tiene una consecuencia concreta para la alerta temprana: una asignatura de escala de aprobación no puede tener nota baja, así que no debe entrar en ningún promedio de riesgo, y el consumidor solo puede saberlo si la escala viene declarada. El valor parcial se excluye de esa escala porque un aprobado a mitad de periodo no significa nada.
+
+**Si resultara falso.** Si existieran más escalas, por ejemplo una de aprobación con distinción o una numérica sobre otro rango, se agregan valores al eje sin cambiar la forma de la respuesta, que es la ventaja de haberlo separado. Si en cambio toda asignatura se calificara con número, el eje sobra y el modelo vuelve a una sola columna de nota.
+
+**Depende de este supuesto.** Los campos de escala y resultado del contrato, y las restricciones de la tabla de inscripción que los relacionan.
+
+---
+
+## S-17 · Qué periodo es el vigente
+
+**Supuesto.** El periodo vigente es aquel cuyo rango de fechas contiene el día de hoy. Si ninguno lo contiene, porque el calendario está entre semestres, el servicio devuelve el último periodo cursado por el estudiante. En consecuencia, la respuesta de no encontrado por falta de matrícula solo se produce cuando el estudiante no tiene ninguna matrícula en ningún periodo.
+
+**Fundamento.** El enunciado pide las materias que el estudiante "tiene inscritas actualmente" y no define qué es actualmente, así que la lectura por fecha es la que corresponde al término. En enero, con el semestre terminado y el siguiente sin empezar, el equipo de acompañamiento sigue necesitando ver el último periodo cursado, porque esa es la información relevante para preparar la intervención del semestre que viene. Un servicio que respondiera vacío durante las semanas de receso dejaría al acompañante sin datos justo cuando tiene tiempo de revisarlos.
+
+El cliente puede distinguir un periodo en curso de uno cerrado comparando las fechas que ya recibe en la respuesta, así que el respaldo no lo obliga a adivinar. La fecha se toma de un reloj inyectado y no de una llamada estática, de modo que el camino de respaldo se puede comprobar sin esperar a que termine el semestre.
+
+**Si resultara falso.** Si la Universidad declarara el periodo vigente de forma explícita, por ejemplo con una marca en el ERP, esa marca reemplaza el cálculo por fechas y el respaldo desaparece, porque siempre habría un periodo declarado. Si en cambio se exigiera que fuera del periodo la respuesta sea vacía, se retira el respaldo y aparece una tercera situación que el contrato tendría que nombrar: el estudiante con matrículas pero ninguna vigente.
+
+**Depende de este supuesto.** La consulta que resuelve la matrícula, el significado del código de no encontrado por falta de matrícula y la descripción de la operación en el contrato.
+
+---
+
+## S-18 · Qué declara el token sobre quien consulta
+
+**Supuesto.** El token que emite la plataforma de identidad trae el sujeto y un rol. Para un estudiante el sujeto es su código institucional; para el personal de acompañamiento es el identificador con el que la plataforma lo nombra, que es el mismo que guarda la asignación estudiante-acompañante. El rol viaja en un atributo llamado `rol` y admite dos valores, estudiante y acompañamiento.
+
+**Fundamento.** Poner el rol en el token evita que Vista 360° mantenga su propio directorio de quién es personal y quién es estudiante, que sería una segunda fuente de verdad sobre un dato que la plataforma de identidad ya tiene (S-10, S-12).
+
+Negar ante un rol desconocido, en vez de ignorarlo, es lo que hace que agregar un rol nuevo en la plataforma de identidad no abra accesos por descuido. La autorización se resuelve antes de mirar si el estudiante consultado existe, de modo que un token ajeno recibe siempre la misma respuesta y no puede usarse para averiguar qué códigos están registrados.
+
+**Si resultara falso.** Si la plataforma no pudiera declarar el rol, Vista 360° tendría que resolverlo consultando un directorio externo en cada petición, con caché para no bloquear la respuesta y una decisión sobre qué hacer cuando esa consulta falla. Si el sujeto del token no fuera el código institucional, hace falta la tabla de correspondencia que ya anticipa el S-11.
+
+**Depende de este supuesto.** La regla de autorización de la Parte 3.1, el emisor de tokens de desarrollo y lo que queda registrado en la auditoría del Escenario 4B.
 
 ---
 

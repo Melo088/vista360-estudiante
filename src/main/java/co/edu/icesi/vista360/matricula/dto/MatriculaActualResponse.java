@@ -9,8 +9,9 @@ import java.util.List;
 
 /**
  * Matricula del periodo academico vigente.
- * Devuelve el conjunto completo del periodo, canceladas incluidas, y expone el estado de
- * cada inscripcion.
+ *
+ * <p>Devuelve el conjunto completo del periodo, canceladas incluidas, y expone el estado de
+ * cada inscripcion. El razonamiento esta en el S-14 de docs/supuestos.md.
  */
 @Schema(name = "MatriculaActual", description = """
         Materias del periodo académico vigente con el estado y la nota de cada una.
@@ -26,8 +27,14 @@ public record MatriculaActualResponse(
         Periodo periodo,
 
         @Schema(description = """
+                Programas en los que el estudiante está matriculado este periodo. Puede traer
+                uno sin inscripciones propias, así que no se deriva de la lista de materias.""",
+                requiredMode = RequiredMode.REQUIRED)
+        List<ProgramaMatriculado> programas,
+
+        @Schema(description = """
                 Instante de la última sincronización. Lo académico es una réplica local
-                alimentada por sondeo (S-01, S-02).""",
+                alimentada por sondeo, no una lectura en vivo del ERP (S-01, S-02).""",
                 example = "2026-08-30T04:15:00Z", requiredMode = RequiredMode.REQUIRED)
         Instant actualizadoEn,
 
@@ -61,8 +68,24 @@ public record MatriculaActualResponse(
             String nombre) {
     }
 
+    @Schema(name = "ProgramaMatriculado", description = """
+            Programa de la matrícula del periodo. El principal es sobre el que el ERP calcula
+            semestre y promedio, y el que se asume cuando una inscripción no declara programa.""")
+    public record ProgramaMatriculado(
+
+            @Schema(example = "TEL", requiredMode = RequiredMode.REQUIRED) String codigo,
+
+            @Schema(example = "Ingeniería Telemática", requiredMode = RequiredMode.REQUIRED)
+            String nombre,
+
+            @Schema(description = "Verdadero en exactamente un programa de la matrícula",
+                    example = "true", requiredMode = RequiredMode.REQUIRED)
+            boolean principal) {
+    }
+
     @Schema(name = "Asignatura", description = """
-            Datos de la asignatura en el catálogo.""")
+            Datos de la asignatura en el catálogo. No dependen de quién la inscribió: una
+            misma asignatura la cursan estudiantes de programas distintos.""")
     public record Asignatura(
 
             @Schema(description = "Código de la asignatura, cinco dígitos", example = "09780",
@@ -78,7 +101,8 @@ public record MatriculaActualResponse(
     }
 
     @Schema(name = "MateriaMatriculada", description = """
-            El programa, el NRC, el grupo y los estados son atributos de la inscripción y no del catálogo (S-09, S-14).""")
+            El programa, el NRC, el grupo y los estados
+            son atributos de la inscripción y no del catálogo (S-09, S-14, S-15).""")
     public record Materia(
 
             @Schema(description = "Asignatura del catálogo que se inscribió",
@@ -86,16 +110,20 @@ public record MatriculaActualResponse(
             Asignatura asignatura,
 
             @Schema(description = """
-                    Identifica el grupo de forma única dentro del periodo.""",
+                    Identifica el grupo de forma única dentro del periodo. Ante discrepancia
+                    con el grupo, manda el NRC.""",
                     example = "11008", requiredMode = RequiredMode.REQUIRED)
             String nrc,
 
             @Schema(description = """
-                    Número de grupo que el estudiante ve en su horario.""",
+                    Número de grupo que el estudiante ve en su horario. Es etiqueta de
+                    presentación y no identifica por sí solo.""",
                     example = "001", requiredMode = RequiredMode.REQUIRED)
             String grupo,
 
-            @Schema(description = "Programa bajo el cual se inscribió esta asignatura",
+            @Schema(description = """
+                    Programa bajo el cual el ERP registró esta inscripción. Que la asignatura
+                    cuente además para otro programa es homologación, fuera de alcance (S-15).""",
                     requiredMode = RequiredMode.REQUIRED)
             Programa programa,
 
@@ -103,10 +131,16 @@ public record MatriculaActualResponse(
             String docente,
 
             @Schema(description = """
-                    Si la inscripción sigue vigente o fue cancelada. Eje independiente
+                    Si la inscripción sigue vigente o fue cancelada. Es un eje independiente
                     del estado de calificación (S-14).""",
                     requiredMode = RequiredMode.REQUIRED)
             EstadoInscripcion estadoInscripcion,
+
+            @Schema(description = """
+                    Con qué se califica la asignatura. Se conoce al inscribir, antes de que
+                    exista calificación, y decide si viene nota o resultado (S-16).""",
+                    requiredMode = RequiredMode.REQUIRED)
+            EscalaCalificacion escalaCalificacion,
 
             @Schema(description = """
                     Hasta dónde llegó la calificación. No se deriva de la nota ni del estado
@@ -115,10 +149,16 @@ public record MatriculaActualResponse(
             EstadoCalificacion estadoCalificacion,
 
             @Schema(description = """
-                    Nota en escala 0.0 a 5.0. Nula si y solo si el estado de calificación es
-                    PENDIENTE.""",
+                    Nota en escala 0.0 a 5.0, solo con escala NUMERICA. Nula si el estado de
+                    calificación es PENDIENTE.""",
                     example = "4.2")
             BigDecimal nota,
+
+            @Schema(description = """
+                    Calificación cualitativa, solo con escala APROBACION. Nula si el estado de
+                    calificación es PENDIENTE.""",
+                    example = "APROBADA")
+            ResultadoAprobacion resultado,
 
             @Schema(description = """
                     Fecha en que se canceló la inscripción. No nula si y solo si el estado de
@@ -135,13 +175,29 @@ public record MatriculaActualResponse(
         CANCELADA
     }
 
+    @Schema(name = "EscalaCalificacion", description = """
+            NUMERICA: se califica con nota de 0.0 a 5.0.
+            APROBACION: se califica como aprobada o reprobada, sin nota.""")
+    public enum EscalaCalificacion {
+        NUMERICA,
+        APROBACION
+    }
+
     @Schema(name = "EstadoCalificacion", description = """
-            PENDIENTE: todavía no hay nota cargada.
+            PENDIENTE: todavía no hay calificación cargada.
             PARCIAL: hay nota acumulada y el periodo no ha cerrado para esa materia.
-            DEFINITIVA: la nota es la del cierre y no cambia.""")
+            DEFINITIVA: la calificación es la del cierre y no cambia.""")
     public enum EstadoCalificacion {
         PENDIENTE,
         PARCIAL,
         DEFINITIVA
+    }
+
+    @Schema(name = "ResultadoAprobacion", description = """
+            APROBADA o REPROBADA. Solo aparece con escala APROBACION, que no admite estado
+            de calificación PARCIAL porque un aprobado parcial no significa nada.""")
+    public enum ResultadoAprobacion {
+        APROBADA,
+        REPROBADA
     }
 }

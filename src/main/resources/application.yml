@@ -1,6 +1,11 @@
 spring:
   application:
     name: vista360
+
+  # Perfil de desarrollo activo por defecto para que el evaluador corra sin configurar nada.
+  # Habilita el emisor de tokens y la consola H2, que no existen bajo ningun otro perfil.
+  profiles:
+    default: dev
   datasource:
     url: jdbc:h2:mem:vista360;MODE=Oracle;DB_CLOSE_DELAY=-1
     username: sa

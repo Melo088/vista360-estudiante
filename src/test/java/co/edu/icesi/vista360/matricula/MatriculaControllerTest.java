@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -31,9 +33,15 @@ class MatriculaControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    /** Token del propio estudiante, que es el caso permitido de la regla (S-18). */
+    private static SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor comoEstudiante(
+            String estudianteId) {
+        return jwt().jwt(token -> token.subject(estudianteId).claim("rol", "ESTUDIANTE"));
+    }
+
     @Test
     void devuelveLaMatriculaDelPeriodoConLaCanceladaIncluida() throws Exception {
-        mockMvc.perform(get(RUTA, "A00123456"))
+        mockMvc.perform(get(RUTA, "A00123456").with(comoEstudiante("A00123456")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estudianteId").value("A00123456"))
                 .andExpect(jsonPath("$.periodo.codigo").value("202620"))
@@ -52,7 +60,7 @@ class MatriculaControllerTest {
     void laMateriaSinCalificarNoTraeNota() throws Exception {
         String plataformas = "$.materias[?(@.asignatura.codigo=='09791')]";
 
-        mockMvc.perform(get(RUTA, "A00123456"))
+        mockMvc.perform(get(RUTA, "A00123456").with(comoEstudiante("A00123456")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(plataformas + ".estadoCalificacion").value("PENDIENTE"))
                 .andExpect(jsonPath(plataformas + ".nota").value(contains(nullValue())))
@@ -62,7 +70,7 @@ class MatriculaControllerTest {
     /** El programa cuelga de la inscripcion: la doble titulacion cabe en un solo listado. */
     @Test
     void consolidaLosDosProgramasEnUnSoloListado() throws Exception {
-        mockMvc.perform(get(RUTA, "A00987654"))
+        mockMvc.perform(get(RUTA, "A00987654").with(comoEstudiante("A00987654")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.materias[*].programa.codigo")
                         .value(containsInAnyOrder("TEL", "TEL", "TEL", "SIS", "SIS")));
@@ -73,7 +81,7 @@ class MatriculaControllerTest {
     void laMateriaDeEscalaDeAprobacionTraeResultadoYNoNota() throws Exception {
         String pdp = "$.materias[?(@.asignatura.codigo=='00101')]";
 
-        mockMvc.perform(get(RUTA, "A00123456"))
+        mockMvc.perform(get(RUTA, "A00123456").with(comoEstudiante("A00123456")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(pdp + ".escalaCalificacion").value("APROBACION"))
                 .andExpect(jsonPath(pdp + ".estadoCalificacion").value("DEFINITIVA"))
@@ -86,7 +94,7 @@ class MatriculaControllerTest {
     void laMateriaDeAprobacionPuedeVenirReprobada() throws Exception {
         String ingles = "$.materias[?(@.asignatura.codigo=='07313')]";
 
-        mockMvc.perform(get(RUTA, "A00987654"))
+        mockMvc.perform(get(RUTA, "A00987654").with(comoEstudiante("A00987654")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(ingles + ".escalaCalificacion").value("APROBACION"))
                 .andExpect(jsonPath(ingles + ".resultado").value("REPROBADA"));
@@ -95,7 +103,7 @@ class MatriculaControllerTest {
     /** La doble titulacion se declara en la matricula, no se deriva de las inscripciones. */
     @Test
     void declaraLosProgramasDeLaMatriculaConSuPrincipal() throws Exception {
-        mockMvc.perform(get(RUTA, "A00987654"))
+        mockMvc.perform(get(RUTA, "A00987654").with(comoEstudiante("A00987654")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.programas", hasSize(2)))
                 .andExpect(jsonPath("$.programas[?(@.principal==true)].codigo")
@@ -107,7 +115,7 @@ class MatriculaControllerTest {
     /** Matriculado y sin inscribir: 200 con lista vacia, nunca 404 (S-14). */
     @Test
     void elMatriculadoQueNoInscribioRecibeListaVacia() throws Exception {
-        mockMvc.perform(get(RUTA, "A00555000"))
+        mockMvc.perform(get(RUTA, "A00555000").with(comoEstudiante("A00555000")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.materias", hasSize(0)))
                 .andExpect(jsonPath("$.programas", hasSize(1)))
@@ -121,7 +129,7 @@ class MatriculaControllerTest {
      */
     @Test
     void elEstudianteSinNingunaMatriculaRecibeUn404Distinguible() throws Exception {
-        mockMvc.perform(get(RUTA, "A00777111"))
+        mockMvc.perform(get(RUTA, "A00777111").with(comoEstudiante("A00777111")))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.detail").value(
@@ -131,15 +139,16 @@ class MatriculaControllerTest {
     /** El otro 404, con detalle propio para que el consumidor los separe. */
     @Test
     void elCodigoInexistenteRecibeElOtro404() throws Exception {
-        mockMvc.perform(get(RUTA, "A00999999"))
+        mockMvc.perform(get(RUTA, "A00999999").with(comoEstudiante("A00999999")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.detail").value(
                         "No existe un estudiante con código A00999999"));
     }
 
+    /** El sujeto coincide con el codigo para pasar la autorizacion y llegar a la validacion. */
     @Test
     void rechazaElCodigoQueNoCumpleElFormato() throws Exception {
-        mockMvc.perform(get(RUTA, "XYZ"))
+        mockMvc.perform(get(RUTA, "XYZ").with(comoEstudiante("XYZ")))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status").value(400));
@@ -147,7 +156,7 @@ class MatriculaControllerTest {
 
     @Test
     void respondeNotFoundCuandoElCodigoNoCorrespondeAUnEstudiante() throws Exception {
-        mockMvc.perform(get(RUTA, "A00999999"))
+        mockMvc.perform(get(RUTA, "A00999999").with(comoEstudiante("A00999999")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
     }

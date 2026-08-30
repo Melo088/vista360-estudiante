@@ -2,6 +2,7 @@ package co.edu.icesi.vista360.matricula;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -77,7 +78,9 @@ class MatriculaConsultasTest {
     private long sentenciasDe(String estudianteId) throws Exception {
         Statistics estadisticas = fabrica.unwrap(SessionFactory.class).getStatistics();
         estadisticas.clear();
-        mockMvc.perform(get(RUTA, estudianteId)).andExpect(status().isOk());
+        mockMvc.perform(get(RUTA, estudianteId)
+                        .with(jwt().jwt(t -> t.subject(estudianteId).claim("rol", "ESTUDIANTE"))))
+                .andExpect(status().isOk());
         return estadisticas.getPrepareStatementCount();
     }
 
@@ -87,7 +90,7 @@ class MatriculaConsultasTest {
      */
     @Test
     void fueraDelPeriodoVigenteDevuelveElUltimoCursado() throws Exception {
-        mockMvc.perform(get(RUTA, "A00123456"))
+        mockMvc.perform(get(RUTA, "A00123456").with(jwt().jwt(t -> t.subject("A00123456").claim("rol", "ESTUDIANTE"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.periodo.codigo").value("202620"))
                 .andExpect(jsonPath("$.materias.length()").value(5));

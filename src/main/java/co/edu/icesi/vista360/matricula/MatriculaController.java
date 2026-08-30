@@ -43,8 +43,10 @@ public class MatriculaController {
             @ApiResponse(responseCode = "200", description = """
                     Matrícula del periodo. Un estudiante matriculado que todavía no inscribe
                     materias responde 200 con la lista vacía."""),
-            @ApiResponse(responseCode = "400",
-                    description = "El código institucional no cumple el formato A00NNNNNN (S-11)",
+            @ApiResponse(responseCode = "400", description = """
+                    El código institucional no cumple el formato A00NNNNNN (S-11). La
+                    autorización se resuelve antes, así que un código mal formado sobre el que
+                    no hay permiso responde 403.""",
                     content = @Content(mediaType = "application/problem+json",
                             schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "401", description = "Sin credencial válida",

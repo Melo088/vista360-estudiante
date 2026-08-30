@@ -2,7 +2,7 @@
 
 Como se menciona, el enunciado dejó intencionalmente varias opciones abiertas. Este documento detalla dichas opciones, indicando dónde una elección específica modifica el diseño de la arquitectura o modelo de datos, junto con la justificación adoptada en cada caso.
 
-Cada supuesto recibe un identificador único que permite referenciarlos desde el resto de los entregables. Las cuatro primeras opciones condicionan a las demás, dado que definen qué información vive dentro de Vista 360°, de qué forma se entera la plataforma de un cambio en el ecosistema, por dónde viaja cada comunicación y qué se hace cuando el ERP no expone una API para los datos necesarios. Las otras doce opciones son independientes entre sí.
+Cada supuesto recibe un identificador único que permite referenciarlos desde el resto de los entregables. Las cuatro primeras opciones condicionan a las demás, dado que definen qué información vive dentro de Vista 360°, de qué forma se entera la plataforma de un cambio en el ecosistema, por dónde viaja cada comunicación y qué se hace cuando el ERP no expone una API para los datos necesarios. Las otras trece opciones son independientes entre sí.
 
 ---
 
@@ -199,6 +199,20 @@ La escala se declara como eje separado y no se deduce de cuál campo viene lleno
 **Si resultara falso.** Si existieran más escalas, por ejemplo una de aprobación con distinción o una numérica sobre otro rango, se agregan valores al eje sin cambiar la forma de la respuesta, que es la ventaja de haberlo separado. Si en cambio toda asignatura se calificara con número, el eje sobra y el modelo vuelve a una sola columna de nota.
 
 **Depende de este supuesto.** Los campos de escala y resultado del contrato, y las restricciones de la tabla de inscripción que los relacionan.
+
+---
+
+## S-17 · Qué periodo es el vigente
+
+**Supuesto.** El periodo vigente es aquel cuyo rango de fechas contiene el día de hoy. Si ninguno lo contiene, porque el calendario está entre semestres, el servicio devuelve el último periodo cursado por el estudiante. En consecuencia, la respuesta de no encontrado por falta de matrícula solo se produce cuando el estudiante no tiene ninguna matrícula en ningún periodo.
+
+**Fundamento.** El enunciado pide las materias que el estudiante "tiene inscritas actualmente" y no define qué es actualmente, así que la lectura por fecha es la que corresponde al término. En enero, con el semestre terminado y el siguiente sin empezar, el equipo de acompañamiento sigue necesitando ver el último periodo cursado, porque esa es la información relevante para preparar la intervención del semestre que viene. Un servicio que respondiera vacío durante las semanas de receso dejaría al acompañante sin datos justo cuando tiene tiempo de revisarlos.
+
+El cliente puede distinguir un periodo en curso de uno cerrado comparando las fechas que ya recibe en la respuesta, así que el respaldo no lo obliga a adivinar. La fecha se toma de un reloj inyectado y no de una llamada estática, de modo que el camino de respaldo se puede comprobar sin esperar a que termine el semestre.
+
+**Si resultara falso.** Si la Universidad declarara el periodo vigente de forma explícita, por ejemplo con una marca en el ERP, esa marca reemplaza el cálculo por fechas y el respaldo desaparece, porque siempre habría un periodo declarado. Si en cambio se exigiera que fuera del periodo la respuesta sea vacía, se retira el respaldo y aparece una tercera situación que el contrato tendría que nombrar: el estudiante con matrículas pero ninguna vigente.
+
+**Depende de este supuesto.** La consulta que resuelve la matrícula, el significado del código de no encontrado por falta de matrícula y la descripción de la operación en el contrato.
 
 ---
 

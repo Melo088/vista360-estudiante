@@ -70,7 +70,9 @@ class MatriculaConsultasTest {
         assertEquals(sinMaterias, conCincoMaterias,
                 "cinco materias costaron " + (conCincoMaterias - sinMaterias)
                         + " sentencias mas que ninguna: hay un N+1");
-        assertTrue(conCincoMaterias <= 4,
+        // Cinco con el reloj en enero. Periodo vigente, respaldo por recencia, carga de la
+        // matricula, inscripciones, y el insert de auditoria.
+        assertTrue(conCincoMaterias <= 5,
                 "la consulta uso " + conCincoMaterias + " sentencias, mas de las esperadas");
     }
 

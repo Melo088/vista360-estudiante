@@ -26,3 +26,10 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+
+# El detalle de salud muestra si se perdieron filas de auditoria. En un despliegue real se
+# restringe a quien tenga rol de operacion.
+management:
+  endpoint:
+    health:
+      show-details: always

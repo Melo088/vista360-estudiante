@@ -1,10 +1,14 @@
 package co.edu.icesi.vista360.seguridad;
 
+import co.edu.icesi.vista360.auditoria.RegistroDeAcceso;
+import co.edu.icesi.vista360.auditoria.RegistroDeAccesoFilter;
+import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
@@ -22,7 +26,8 @@ public class SeguridadConfig {
 
     @Bean
     SecurityFilterChain cadenaFiltros(HttpSecurity http, AutorizacionEstudiante autorizacion,
-            RespuestasDeSeguridad respuestas) throws Exception {
+            RespuestasDeSeguridad respuestas, RegistroDeAcceso registro, Clock reloj)
+            throws Exception {
         return http
                 // Sin sesion ni formulario, asi que no hay cookie que un tercero pueda montar.
                 .csrf(AbstractHttpConfigurer::disable)
@@ -36,6 +41,9 @@ public class SeguridadConfig {
                 .exceptionHandling(errores -> errores
                         .authenticationEntryPoint(respuestas)
                         .accessDeniedHandler(respuestas))
+                // Antes de autenticar, para ver tambien el token invalido que corta la cadena.
+                .addFilterBefore(new RegistroDeAccesoFilter(registro, reloj),
+                        BearerTokenAuthenticationFilter.class)
                 .build();
     }
 }

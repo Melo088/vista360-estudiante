@@ -12,9 +12,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.stereotype.Component;
 
-/**
- * Decide quien puede consultar a que estudiante.
- */
+/** Decide quien puede consultar a que estudiante, registrada una sola vez sobre la ruta. */
 @Component
 public class AutorizacionEstudiante
         implements AuthorizationManager<RequestAuthorizationContext> {

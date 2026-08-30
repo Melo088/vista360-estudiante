@@ -48,7 +48,7 @@ class MatriculaControllerTest {
                 .andExpect(jsonPath(CANCELADA + ".grupo").value("001"));
     }
 
-    /** PENDIENTE y nota nula van siempre juntos. */
+    /** PENDIENTE y nota nula van juntos. */
     @Test
     void laMateriaSinCalificarNoTraeNota() throws Exception {
         String plataformas = "$.materias[?(@.asignatura.codigo=='09791')]";
@@ -66,7 +66,43 @@ class MatriculaControllerTest {
         mockMvc.perform(get(RUTA, "A00987654"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.materias[*].programa.codigo")
-                        .value(containsInAnyOrder("TEL", "TEL", "SIS", "SIS")));
+                        .value(containsInAnyOrder("TEL", "TEL", "TEL", "SIS", "SIS")));
+    }
+
+    /** Escala APROBACION: viene resultado y nunca nota, sin colapsar los dos ejes (S-16). */
+    @Test
+    void laMateriaDeEscalaDeAprobacionTraeResultadoYNoNota() throws Exception {
+        String pdp = "$.materias[?(@.asignatura.codigo=='00101')]";
+
+        mockMvc.perform(get(RUTA, "A00123456"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(pdp + ".escalaCalificacion").value("APROBACION"))
+                .andExpect(jsonPath(pdp + ".estadoCalificacion").value("DEFINITIVA"))
+                .andExpect(jsonPath(pdp + ".resultado").value("APROBADA"))
+                .andExpect(jsonPath(pdp + ".nota").value(contains(nullValue())));
+    }
+
+    /** El otro valor de la escala, para que el contrato no parezca de un solo resultado. */
+    @Test
+    void laMateriaDeAprobacionPuedeVenirReprobada() throws Exception {
+        String ingles = "$.materias[?(@.asignatura.codigo=='07313')]";
+
+        mockMvc.perform(get(RUTA, "A00987654"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(ingles + ".escalaCalificacion").value("APROBACION"))
+                .andExpect(jsonPath(ingles + ".resultado").value("REPROBADA"));
+    }
+
+    /** La doble titulacion se declara en la matricula, no se deriva de las inscripciones. */
+    @Test
+    void declaraLosProgramasDeLaMatriculaConSuPrincipal() throws Exception {
+        mockMvc.perform(get(RUTA, "A00987654"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.programas", hasSize(2)))
+                .andExpect(jsonPath("$.programas[?(@.principal==true)].codigo")
+                        .value(contains("TEL")))
+                .andExpect(jsonPath("$.programas[?(@.principal==false)].codigo")
+                        .value(contains("SIS")));
     }
 
     @Test

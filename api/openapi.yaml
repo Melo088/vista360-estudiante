@@ -51,13 +51,12 @@ paths:
                 $ref: '#/components/schemas/MatriculaActual'
               examples:
                 unPrograma:
-                  summary: Un programa, con una materia cancelada que venía perdiendo
+                  summary: Un programa, con una cancelada que venía perdiendo
                   value:
                     estudianteId: 'A00123456'
-                    periodo:
-                      codigo: '202620'
-                      fechaInicio: '2026-07-27'
-                      fechaFin: '2026-11-28'
+                    periodo: { codigo: '202620', fechaInicio: '2026-07-27', fechaFin: '2026-11-28' }
+                    programas:
+                      - { codigo: 'TEL', nombre: 'Ingeniería Telemática', principal: true }
                     actualizadoEn: '2026-08-30T04:15:00Z'
                     materias:
                       - asignatura: { codigo: '09780', nombre: 'Ciberseguridad', creditos: 3 }
@@ -66,8 +65,10 @@ paths:
                         programa: { codigo: 'TEL', nombre: 'Ingeniería Telemática' }
                         docente: 'Ana María Restrepo'
                         estadoInscripcion: 'INSCRITA'
+                        escalaCalificacion: 'NUMERICA'
                         estadoCalificacion: 'PARCIAL'
                         nota: 4.2
+                        resultado: null
                         fechaCancelacion: null
                       - asignatura: { codigo: '09794', nombre: 'Proyecto integrador II', creditos: 3 }
                         nrc: '11384'
@@ -75,26 +76,30 @@ paths:
                         programa: { codigo: 'TEL', nombre: 'Ingeniería Telemática' }
                         docente: 'Carlos Andrés Zapata'
                         estadoInscripcion: 'CANCELADA'
+                        escalaCalificacion: 'NUMERICA'
                         estadoCalificacion: 'PARCIAL'
                         nota: 2.1
+                        resultado: null
                         fechaCancelacion: '2026-08-21'
-                      - asignatura: { codigo: '09791', nombre: 'Plataformas I', creditos: 3 }
-                        nrc: '11011'
+                      - asignatura: { codigo: '00101', nombre: 'Programa de desarrollo profesional I', creditos: 0 }
+                        nrc: '10387'
                         grupo: '001'
                         programa: { codigo: 'TEL', nombre: 'Ingeniería Telemática' }
-                        docente: 'Diana Lucía Ospina'
+                        docente: 'Claudia Patricia Nieto'
                         estadoInscripcion: 'INSCRITA'
-                        estadoCalificacion: 'PENDIENTE'
+                        escalaCalificacion: 'APROBACION'
+                        estadoCalificacion: 'DEFINITIVA'
                         nota: null
+                        resultado: 'APROBADA'
                         fechaCancelacion: null
                 dobleTitulacion:
-                  summary: Doble titulación consolidada en un solo listado
+                  summary: Doble titulación consolidada, con el programa principal marcado
                   value:
                     estudianteId: 'A00987654'
-                    periodo:
-                      codigo: '202620'
-                      fechaInicio: '2026-07-27'
-                      fechaFin: '2026-11-28'
+                    periodo: { codigo: '202620', fechaInicio: '2026-07-27', fechaFin: '2026-11-28' }
+                    programas:
+                      - { codigo: 'TEL', nombre: 'Ingeniería Telemática', principal: true }
+                      - { codigo: 'SIS', nombre: 'Ingeniería de Sistemas', principal: false }
                     actualizadoEn: '2026-08-30T04:15:00Z'
                     materias:
                       - asignatura: { codigo: '09783', nombre: 'Sistemas operativos', creditos: 3 }
@@ -103,8 +108,10 @@ paths:
                         programa: { codigo: 'TEL', nombre: 'Ingeniería Telemática' }
                         docente: 'Felipe Andrés Marín'
                         estadoInscripcion: 'INSCRITA'
+                        escalaCalificacion: 'NUMERICA'
                         estadoCalificacion: 'PARCIAL'
                         nota: 3.1
+                        resultado: null
                         fechaCancelacion: null
                       - asignatura: { codigo: '06221', nombre: 'Principios de Economía', creditos: 3 }
                         nrc: '10743'
@@ -112,17 +119,29 @@ paths:
                         programa: { codigo: 'SIS', nombre: 'Ingeniería de Sistemas' }
                         docente: 'Mónica Alejandra Gil'
                         estadoInscripcion: 'INSCRITA'
+                        escalaCalificacion: 'NUMERICA'
                         estadoCalificacion: 'PARCIAL'
                         nota: 2.8
+                        resultado: null
+                        fechaCancelacion: null
+                      - asignatura: { codigo: '07313', nombre: 'Professional communication for an interconnected world IV', creditos: 1 }
+                        nrc: '10998'
+                        grupo: '013'
+                        programa: { codigo: 'TEL', nombre: 'Ingeniería Telemática' }
+                        docente: 'Laura Cristina Bedoya'
+                        estadoInscripcion: 'INSCRITA'
+                        escalaCalificacion: 'APROBACION'
+                        estadoCalificacion: 'DEFINITIVA'
+                        nota: null
+                        resultado: 'REPROBADA'
                         fechaCancelacion: null
                 sinInscribir:
                   summary: Matriculado que todavía no inscribe materias
                   value:
                     estudianteId: 'A00555000'
-                    periodo:
-                      codigo: '202620'
-                      fechaInicio: '2026-07-27'
-                      fechaFin: '2026-11-28'
+                    periodo: { codigo: '202620', fechaInicio: '2026-07-27', fechaFin: '2026-11-28' }
+                    programas:
+                      - { codigo: 'TEL', nombre: 'Ingeniería Telemática', principal: true }
                     actualizadoEn: '2026-08-30T04:15:00Z'
                     materias: []
         '400':
@@ -155,7 +174,7 @@ components:
       description: |
         Materias del periodo académico vigente con el estado y la nota de cada una. Incluye
         siempre las inscritas y las canceladas (S-14).
-      required: [estudianteId, periodo, actualizadoEn, materias]
+      required: [estudianteId, periodo, programas, actualizadoEn, materias]
       properties:
         estudianteId:
           type: string
@@ -164,6 +183,13 @@ components:
           examples: ['A00123456']
         periodo:
           $ref: '#/components/schemas/PeriodoAcademico'
+        programas:
+          type: array
+          description: |
+            Programas en los que el estudiante está matriculado este periodo. Puede traer uno
+            sin inscripciones propias, así que no se deriva de la lista de materias (S-15).
+          items:
+            $ref: '#/components/schemas/ProgramaMatriculado'
         actualizadoEn:
           type: string
           format: date-time
@@ -229,14 +255,33 @@ components:
           type: string
           examples: ['Ingeniería Telemática']
 
+    ProgramaMatriculado:
+      type: object
+      description: |
+        Programa de la matrícula del periodo. El principal es sobre el que el ERP calcula
+        semestre y promedio, y el que se asume cuando una inscripción no declara programa.
+      required: [codigo, nombre, principal]
+      properties:
+        codigo:
+          type: string
+          examples: ['TEL']
+        nombre:
+          type: string
+          examples: ['Ingeniería Telemática']
+        principal:
+          type: boolean
+          description: Verdadero en exactamente un programa de la matrícula.
+          examples: [true]
+
     MateriaMatriculada:
       type: object
       description: |
-        Una inscripción, no una asignatura. El programa, el NRC, el grupo y los estados son
-        atributos de la inscripción y no del catálogo (S-09, S-14). Invariantes: `PENDIENTE`
-        si y solo si `nota` nula, y `fechaCancelacion` si y solo si `CANCELADA`.
+        Una inscripción, no una asignatura. El programa, el NRC, el grupo y los tres ejes de
+        estado son atributos de la inscripción y no del catálogo (S-09, S-14, S-15). Las
+        invariantes que el servicio garantiza están en `escalaCalificacion` y `resultado`.
       required:
-        [asignatura, nrc, grupo, programa, docente, estadoInscripcion, estadoCalificacion]
+        [asignatura, nrc, grupo, programa, docente, estadoInscripcion, escalaCalificacion,
+         estadoCalificacion]
       properties:
         asignatura:
           $ref: '#/components/schemas/Asignatura'
@@ -259,6 +304,8 @@ components:
           examples: ['Ana María Restrepo']
         estadoInscripcion:
           $ref: '#/components/schemas/EstadoInscripcion'
+        escalaCalificacion:
+          $ref: '#/components/schemas/EscalaCalificacion'
         estadoCalificacion:
           $ref: '#/components/schemas/EstadoCalificacion'
         nota:
@@ -267,9 +314,16 @@ components:
           maximum: 5.0
           multipleOf: 0.01
           description: |
-            Nota en escala 0.0 a 5.0. Nula si y solo si el estado de calificación es
-            PENDIENTE.
+            Nota de 0.0 a 5.0, solo con escala NUMERICA. Presente si y solo si la escala es
+            NUMERICA y el estado de calificación no es PENDIENTE.
           examples: [4.2]
+        resultado:
+          description: |
+            Calificación cualitativa, solo con escala APROBACION. Presente si y solo si la
+            escala es APROBACION y el estado de calificación es DEFINITIVA.
+          oneOf:
+            - $ref: '#/components/schemas/ResultadoAprobacion'
+            - type: 'null'
         fechaCancelacion:
           type: [string, 'null']
           format: date
@@ -285,6 +339,22 @@ components:
         calificación: una cancelada puede traer nota parcial, y esa combinación es la señal de
         alerta temprana (S-14). `INSCRITA` sigue vigente, `CANCELADA` se canceló en el periodo.
       enum: [INSCRITA, CANCELADA]
+
+    EscalaCalificacion:
+      type: string
+      description: |
+        Con qué se califica la asignatura. Se conoce al inscribir, antes de que exista
+        calificación, así que con PENDIENTE el cliente ya sabe qué viene (S-16). `NUMERICA`
+        da nota de 0.0 a 5.0, `APROBACION` da un resultado cualitativo y nunca nota.
+      enum: [NUMERICA, APROBACION]
+
+    ResultadoAprobacion:
+      type: string
+      description: |
+        Calificación de las asignaturas de escala APROBACION, que el balance del ERP muestra
+        como aprobado. Esa escala no admite estado de calificación PARCIAL, porque un aprobado
+        parcial no significa nada (S-16).
+      enum: [APROBADA, REPROBADA]
 
     EstadoCalificacion:
       type: string

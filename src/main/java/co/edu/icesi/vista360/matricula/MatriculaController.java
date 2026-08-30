@@ -2,11 +2,14 @@ package co.edu.icesi.vista360.matricula;
 
 import co.edu.icesi.vista360.matricula.dto.MatriculaActualResponse;
 import co.edu.icesi.vista360.matricula.dto.MatriculaActualResponse.Asignatura;
+import co.edu.icesi.vista360.matricula.dto.MatriculaActualResponse.EscalaCalificacion;
 import co.edu.icesi.vista360.matricula.dto.MatriculaActualResponse.EstadoCalificacion;
 import co.edu.icesi.vista360.matricula.dto.MatriculaActualResponse.EstadoInscripcion;
 import co.edu.icesi.vista360.matricula.dto.MatriculaActualResponse.Materia;
 import co.edu.icesi.vista360.matricula.dto.MatriculaActualResponse.Periodo;
 import co.edu.icesi.vista360.matricula.dto.MatriculaActualResponse.Programa;
+import co.edu.icesi.vista360.matricula.dto.MatriculaActualResponse.ProgramaMatriculado;
+import co.edu.icesi.vista360.matricula.dto.MatriculaActualResponse.ResultadoAprobacion;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -30,7 +33,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Implementa el contrato de api/openapi.yaml.
- * Los datos estan quemados: falta el modelo de datos, el repositorio y la capa de servicio.
  */
 @RestController
 @RequestMapping("/api/v1/estudiantes")
@@ -49,58 +51,81 @@ public class MatriculaController {
     private static final Programa TELEMATICA = new Programa("TEL", "Ingeniería Telemática");
     private static final Programa SISTEMAS = new Programa("SIS", "Ingeniería de Sistemas");
 
+    /** Los programas de la matricula. El principal es el que el ERP usa de referencia (S-15). */
+    private static final Map<String, List<ProgramaMatriculado>> PROGRAMAS_POR_ESTUDIANTE = Map.of(
+            "A00123456", List.of(
+                    new ProgramaMatriculado("TEL", "Ingeniería Telemática", true)),
+            "A00987654", List.of(
+                    new ProgramaMatriculado("TEL", "Ingeniería Telemática", true),
+                    new ProgramaMatriculado("SIS", "Ingeniería de Sistemas", false)));
+
     private static final Map<String, List<Materia>> MATERIAS_POR_ESTUDIANTE = Map.of(
             // Un solo programa. Muestra la combinacion CANCELADA + PARCIAL con nota baja.
             "A00123456", List.of(
                     new Materia(
                             new Asignatura("09780", "Ciberseguridad", 3),
                             "11008", "001", TELEMATICA, "Ana María Restrepo",
-                            EstadoInscripcion.INSCRITA, EstadoCalificacion.PARCIAL,
-                            new BigDecimal("4.2"), null),
-                    // Señal de alerta temprana y solo se puede escribir con los dos ejes separados.
+                            EstadoInscripcion.INSCRITA, EscalaCalificacion.NUMERICA,
+                            EstadoCalificacion.PARCIAL, new BigDecimal("4.20"), null, null),
+                    // Cancelo en la semana cuatro una materia que venia perdiendo. Es la señal
+                    // de alerta temprana y solo se puede escribir con los dos ejes separados.
                     new Materia(
                             new Asignatura("09794", "Proyecto integrador II", 3),
                             "11384", "001", TELEMATICA, "Carlos Andrés Zapata",
-                            EstadoInscripcion.CANCELADA, EstadoCalificacion.PARCIAL,
-                            new BigDecimal("2.1"), LocalDate.of(2026, 8, 21)),
+                            EstadoInscripcion.CANCELADA, EscalaCalificacion.NUMERICA,
+                            EstadoCalificacion.PARCIAL, new BigDecimal("2.10"), null,
+                            LocalDate.of(2026, 8, 21)),
                     new Materia(
                             new Asignatura("09791", "Plataformas I", 3),
                             "11011", "001", TELEMATICA, "Diana Lucía Ospina",
-                            EstadoInscripcion.INSCRITA, EstadoCalificacion.PENDIENTE, null, null),
+                            EstadoInscripcion.INSCRITA, EscalaCalificacion.NUMERICA,
+                            EstadoCalificacion.PENDIENTE, null, null, null),
                     new Materia(
                             new Asignatura("09663", "Proyecto de grado I - TEL", 3),
                             "10156", "001", TELEMATICA, "Jorge Enrique Valencia",
-                            EstadoInscripcion.INSCRITA, EstadoCalificacion.PARCIAL,
-                            new BigDecimal("4.5"), null),
+                            EstadoInscripcion.INSCRITA, EscalaCalificacion.NUMERICA,
+                            EstadoCalificacion.PARCIAL, new BigDecimal("4.50"), null, null),
+                    // Cero creditos y sin nota numerica: el caso que obliga al eje de escala.
                     new Materia(
                             new Asignatura("00101", "Programa de desarrollo profesional I", 0),
                             "10387", "001", TELEMATICA, "Claudia Patricia Nieto",
-                            EstadoInscripcion.INSCRITA, EstadoCalificacion.PENDIENTE, null, null)),
+                            EstadoInscripcion.INSCRITA, EscalaCalificacion.APROBACION,
+                            EstadoCalificacion.DEFINITIVA, null, ResultadoAprobacion.APROBADA,
+                            null)),
 
-            // Doble programa, las dos titulaciones conviven en un mismo listado por periodo (S-09).
+            // Doble programa. El programa cuelga de la inscripcion y la matricula declara los
+            // dos, asi que la doble titulacion se ve aunque un programa no tenga materias.
             "A00987654", List.of(
                     new Materia(
                             new Asignatura("09783", "Sistemas operativos", 3),
                             "10221", "001", TELEMATICA, "Felipe Andrés Marín",
-                            EstadoInscripcion.INSCRITA, EstadoCalificacion.PARCIAL,
-                            new BigDecimal("3.1"), null),
+                            EstadoInscripcion.INSCRITA, EscalaCalificacion.NUMERICA,
+                            EstadoCalificacion.PARCIAL, new BigDecimal("3.10"), null, null),
                     new Materia(
                             new Asignatura("09798", "Analítica de datos", 3),
                             "11052", "003", TELEMATICA, "Ana María Restrepo",
-                            EstadoInscripcion.INSCRITA, EstadoCalificacion.DEFINITIVA,
-                            new BigDecimal("4.0"), null),
+                            EstadoInscripcion.INSCRITA, EscalaCalificacion.NUMERICA,
+                            EstadoCalificacion.DEFINITIVA, new BigDecimal("4.00"), null, null),
                     new Materia(
                             new Asignatura("06221", "Principios de Economía", 3),
                             "10743", "015", SISTEMAS, "Mónica Alejandra Gil",
-                            EstadoInscripcion.INSCRITA, EstadoCalificacion.PARCIAL,
-                            new BigDecimal("2.8"), null),
-                    // Cancelacion temprana, sin notas cargadas todavia. Contrasta con la de
-                    // A00123456 y muestra que la fecha es la que separa las dos historias.
+                            EstadoInscripcion.INSCRITA, EscalaCalificacion.NUMERICA,
+                            EstadoCalificacion.PARCIAL, new BigDecimal("2.80"), null, null),
+                    // Cancelacion temprana, sin calificacion cargada. Contrasta con la de
+                    // A00123456 y muestra que la fecha separa las dos historias.
                     new Materia(
                             new Asignatura("12192", "Innovación y emprendimiento I", 3),
                             "11311", "001", SISTEMAS, "Ricardo León Osorio",
-                            EstadoInscripcion.CANCELADA, EstadoCalificacion.PENDIENTE,
-                            null, LocalDate.of(2026, 8, 7))));
+                            EstadoInscripcion.CANCELADA, EscalaCalificacion.NUMERICA,
+                            EstadoCalificacion.PENDIENTE, null, null, LocalDate.of(2026, 8, 7)),
+                    // El otro valor de la escala de aprobacion, para que se vea que existe.
+                    new Materia(
+                            new Asignatura("07313",
+                                    "Professional communication for an interconnected world IV", 1),
+                            "10998", "013", TELEMATICA, "Laura Cristina Bedoya",
+                            EstadoInscripcion.INSCRITA, EscalaCalificacion.APROBACION,
+                            EstadoCalificacion.DEFINITIVA, null, ResultadoAprobacion.REPROBADA,
+                            null)));
 
     @Operation(
             summary = "Matrícula del periodo vigente con el estado y la nota de cada materia",
@@ -147,7 +172,7 @@ public class MatriculaController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,
                     "No existe un estudiante con código " + estudianteId);
         }
-        return new MatriculaActualResponse(
-                estudianteId, PERIODO_VIGENTE, ULTIMA_SINCRONIZACION, materias);
+        return new MatriculaActualResponse(estudianteId, PERIODO_VIGENTE,
+                PROGRAMAS_POR_ESTUDIANTE.get(estudianteId), ULTIMA_SINCRONIZACION, materias);
     }
 }

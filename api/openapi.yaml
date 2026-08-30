@@ -161,9 +161,9 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: |
-        Token emitido por la plataforma de identidad; se propaga el de quien originó la
-        petición (S-10). Su aplicación corresponde a la Parte 3.1: la ejecución local corre
-        con la cadena de seguridad abierta para poder probar el servicio sin credenciales.
+        Token emitido por la plataforma de identidad, con el sujeto y el rol de quien consulta
+        (S-10, S-18). Se aplica siempre. En local lo emite `GET /dev/token`, que solo existe
+        bajo el perfil de desarrollo y en producción no se registra.
 
   schemas:
 
@@ -387,7 +387,10 @@ components:
   responses:
 
     SolicitudInvalida:
-      description: El código institucional no cumple el formato `A00NNNNNN` (S-11).
+      description: |
+        El código institucional no cumple el formato `A00NNNNNN` (S-11). La autorización se
+        resuelve antes, así que un código mal formado sobre el que quien consulta no tiene
+        permiso responde 403 y no 400.
       content:
         application/problem+json:
           schema:
@@ -395,8 +398,7 @@ components:
 
     NoAutenticado:
       description: |
-        Falta la credencial o no es válida. Se aplica en la Parte 3.1; la ejecución local
-        corre con la cadena de seguridad abierta.
+        Falta el token, está vencido o su firma no valida.
       content:
         application/problem+json:
           schema:
@@ -404,9 +406,9 @@ components:
 
     NoAutorizado:
       description: |
-        La credencial es válida pero no habilita a consultar a ese estudiante: cada estudiante
-        se consulta a sí mismo y el acompañante solo a los que tiene asignados (S-05).
-        Se aplica en la Parte 3.1.
+        El token es válido y no habilita a consultar a ese estudiante. Cada estudiante se
+        consulta a sí mismo y el acompañante solo a los que tiene asignados con vigencia
+        abierta (S-05, S-18). Se resuelve antes de mirar si el estudiante existe.
       content:
         application/problem+json:
           schema:

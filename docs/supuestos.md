@@ -2,7 +2,7 @@
 
 Como se menciona, el enunciado dejó intencionalmente varias opciones abiertas. Este documento detalla dichas opciones, indicando dónde una elección específica modifica el diseño de la arquitectura o modelo de datos, junto con la justificación adoptada en cada caso.
 
-Cada supuesto recibe un identificador único que permite referenciarlos desde el resto de los entregables. Las cuatro primeras opciones condicionan a las demás, dado que definen qué información vive dentro de Vista 360°, de qué forma se entera la plataforma de un cambio en el ecosistema, por dónde viaja cada comunicación y qué se hace cuando el ERP no expone una API para los datos necesarios. Las otras trece opciones son independientes entre sí.
+Cada supuesto recibe un identificador único que permite referenciarlos desde el resto de los entregables. Las cuatro primeras opciones condicionan a las demás, dado que definen qué información vive dentro de Vista 360°, de qué forma se entera la plataforma de un cambio en el ecosistema, por dónde viaja cada comunicación y qué se hace cuando el ERP no expone una API para los datos necesarios. Las otras catorce opciones son independientes entre sí.
 
 ---
 
@@ -213,6 +213,20 @@ El cliente puede distinguir un periodo en curso de uno cerrado comparando las fe
 **Si resultara falso.** Si la Universidad declarara el periodo vigente de forma explícita, por ejemplo con una marca en el ERP, esa marca reemplaza el cálculo por fechas y el respaldo desaparece, porque siempre habría un periodo declarado. Si en cambio se exigiera que fuera del periodo la respuesta sea vacía, se retira el respaldo y aparece una tercera situación que el contrato tendría que nombrar: el estudiante con matrículas pero ninguna vigente.
 
 **Depende de este supuesto.** La consulta que resuelve la matrícula, el significado del código de no encontrado por falta de matrícula y la descripción de la operación en el contrato.
+
+---
+
+## S-18 · Qué declara el token sobre quien consulta
+
+**Supuesto.** El token que emite la plataforma de identidad trae el sujeto y un rol. Para un estudiante el sujeto es su código institucional; para el personal de acompañamiento es el identificador con el que la plataforma lo nombra, que es el mismo que guarda la asignación estudiante-acompañante. El rol viaja en un atributo llamado `rol` y admite dos valores, estudiante y acompañamiento.
+
+**Fundamento.** Poner el rol en el token evita que Vista 360° mantenga su propio directorio de quién es personal y quién es estudiante, que sería una segunda fuente de verdad sobre un dato que la plataforma de identidad ya tiene (S-10, S-12).
+
+Negar ante un rol desconocido, en vez de ignorarlo, es lo que hace que agregar un rol nuevo en la plataforma de identidad no abra accesos por descuido. La autorización se resuelve antes de mirar si el estudiante consultado existe, de modo que un token ajeno recibe siempre la misma respuesta y no puede usarse para averiguar qué códigos están registrados.
+
+**Si resultara falso.** Si la plataforma no pudiera declarar el rol, Vista 360° tendría que resolverlo consultando un directorio externo en cada petición, con caché para no bloquear la respuesta y una decisión sobre qué hacer cuando esa consulta falla. Si el sujeto del token no fuera el código institucional, hace falta la tabla de correspondencia que ya anticipa el S-11.
+
+**Depende de este supuesto.** La regla de autorización de la Parte 3.1, el emisor de tokens de desarrollo y lo que queda registrado en la auditoría del Escenario 4B.
 
 ---
 

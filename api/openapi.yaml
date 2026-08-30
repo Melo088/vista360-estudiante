@@ -1,0 +1,361 @@
+# Contrato de diseño. La aplicación publica en /v3/api-docs el reflejo de la implementación 
+
+openapi: 3.1.0
+
+info:
+  title: Vista 360° del Estudiante
+  version: 1.0.0
+  description: |
+    Contrato del servicio de matrícula de la Parte 2. Dado el código institucional de un
+    estudiante, devuelve las materias del periodo académico vigente con la nota de cada una.
+    Los códigos S-NN remiten a `docs/supuestos.md`, donde está el razonamiento de cada decisión.
+
+servers:
+  - url: http://localhost:8080
+    description: Ejecución local con `./mvnw spring-boot:run`
+
+tags:
+  - name: Matrícula
+    description: Consulta de la matrícula del periodo vigente
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/v1/estudiantes/{estudianteId}/matricula-actual:
+    get:
+      tags: [Matrícula]
+      operationId: obtenerMatriculaActual
+      summary: Matrícula del periodo vigente con el estado y la nota de cada materia
+      description: |
+        Devuelve el conjunto completo del periodo académico vigente, con las canceladas
+        incluidas y sin parámetros de filtro. "Matriculadas" es ese conjunto e "inscritas
+        actualmente" las que tienen `estadoInscripcion` en `INSCRITA` (S-14, S-11, S-09).
+      parameters:
+        - name: estudianteId
+          in: path
+          required: true
+          description: Código institucional del estudiante (S-11).
+          schema:
+            type: string
+            pattern: '^A00\d{6}$'
+            examples: ['A00123456']
+      responses:
+        '200':
+          description: |
+            Matrícula del periodo vigente. Un estudiante matriculado que todavía no inscribe
+            materias responde 200 con `materias` vacía.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatriculaActual'
+              examples:
+                unPrograma:
+                  summary: Un programa, con una materia cancelada que venía perdiendo
+                  value:
+                    estudianteId: 'A00123456'
+                    periodo:
+                      codigo: '202620'
+                      fechaInicio: '2026-07-27'
+                      fechaFin: '2026-11-28'
+                    actualizadoEn: '2026-08-30T04:15:00Z'
+                    materias:
+                      - asignatura: { codigo: '09780', nombre: 'Ciberseguridad', creditos: 3 }
+                        nrc: '11008'
+                        grupo: '001'
+                        programa: { codigo: 'TEL', nombre: 'Ingeniería Telemática' }
+                        docente: 'Ana María Restrepo'
+                        estadoInscripcion: 'INSCRITA'
+                        estadoCalificacion: 'PARCIAL'
+                        nota: 4.2
+                        fechaCancelacion: null
+                      - asignatura: { codigo: '09794', nombre: 'Proyecto integrador II', creditos: 3 }
+                        nrc: '11384'
+                        grupo: '001'
+                        programa: { codigo: 'TEL', nombre: 'Ingeniería Telemática' }
+                        docente: 'Carlos Andrés Zapata'
+                        estadoInscripcion: 'CANCELADA'
+                        estadoCalificacion: 'PARCIAL'
+                        nota: 2.1
+                        fechaCancelacion: '2026-08-21'
+                      - asignatura: { codigo: '09791', nombre: 'Plataformas I', creditos: 3 }
+                        nrc: '11011'
+                        grupo: '001'
+                        programa: { codigo: 'TEL', nombre: 'Ingeniería Telemática' }
+                        docente: 'Diana Lucía Ospina'
+                        estadoInscripcion: 'INSCRITA'
+                        estadoCalificacion: 'PENDIENTE'
+                        nota: null
+                        fechaCancelacion: null
+                dobleTitulacion:
+                  summary: Doble titulación consolidada en un solo listado
+                  value:
+                    estudianteId: 'A00987654'
+                    periodo:
+                      codigo: '202620'
+                      fechaInicio: '2026-07-27'
+                      fechaFin: '2026-11-28'
+                    actualizadoEn: '2026-08-30T04:15:00Z'
+                    materias:
+                      - asignatura: { codigo: '09783', nombre: 'Sistemas operativos', creditos: 3 }
+                        nrc: '10221'
+                        grupo: '001'
+                        programa: { codigo: 'TEL', nombre: 'Ingeniería Telemática' }
+                        docente: 'Felipe Andrés Marín'
+                        estadoInscripcion: 'INSCRITA'
+                        estadoCalificacion: 'PARCIAL'
+                        nota: 3.1
+                        fechaCancelacion: null
+                      - asignatura: { codigo: '06221', nombre: 'Principios de Economía', creditos: 3 }
+                        nrc: '10743'
+                        grupo: '015'
+                        programa: { codigo: 'SIS', nombre: 'Ingeniería de Sistemas' }
+                        docente: 'Mónica Alejandra Gil'
+                        estadoInscripcion: 'INSCRITA'
+                        estadoCalificacion: 'PARCIAL'
+                        nota: 2.8
+                        fechaCancelacion: null
+                sinInscribir:
+                  summary: Matriculado que todavía no inscribe materias
+                  value:
+                    estudianteId: 'A00555000'
+                    periodo:
+                      codigo: '202620'
+                      fechaInicio: '2026-07-27'
+                      fechaFin: '2026-11-28'
+                    actualizadoEn: '2026-08-30T04:15:00Z'
+                    materias: []
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoAutorizado'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Token emitido por la plataforma de identidad; se propaga el de quien originó la
+        petición (S-10). Su aplicación corresponde a la Parte 3.1: la ejecución local corre
+        con la cadena de seguridad abierta para poder probar el servicio sin credenciales.
+
+  schemas:
+
+    MatriculaActual:
+      type: object
+      description: |
+        Materias del periodo académico vigente con el estado y la nota de cada una. Incluye
+        siempre las inscritas y las canceladas (S-14).
+      required: [estudianteId, periodo, actualizadoEn, materias]
+      properties:
+        estudianteId:
+          type: string
+          pattern: '^A00\d{6}$'
+          description: Código institucional del estudiante (S-11).
+          examples: ['A00123456']
+        periodo:
+          $ref: '#/components/schemas/PeriodoAcademico'
+        actualizadoEn:
+          type: string
+          format: date-time
+          description: |
+            Instante de la última sincronización. Lo académico es una réplica local alimentada
+            por sondeo, no una lectura en vivo del ERP (S-01, S-02).
+          examples: ['2026-08-30T04:15:00Z']
+        materias:
+          type: array
+          description: |
+            Inscripciones del periodo. Vacía si el estudiante está matriculado pero todavía no
+            inscribe materias.
+          items:
+            $ref: '#/components/schemas/MateriaMatriculada'
+
+    PeriodoAcademico:
+      type: object
+      description: Periodo académico vigente.
+      required: [codigo, fechaInicio, fechaFin]
+      properties:
+        codigo:
+          type: string
+          description: Año seguido del número de periodo.
+          examples: ['202620']
+        fechaInicio:
+          type: string
+          format: date
+          examples: ['2026-07-27']
+        fechaFin:
+          type: string
+          format: date
+          examples: ['2026-11-28']
+
+    Asignatura:
+      type: object
+      description: |
+        Datos de la asignatura en el catálogo. No dependen de quién la inscribió: una misma
+        asignatura la cursan estudiantes de programas distintos.
+      required: [codigo, nombre, creditos]
+      properties:
+        codigo:
+          type: string
+          description: Código de la asignatura, cinco dígitos.
+          examples: ['09780']
+        nombre:
+          type: string
+          examples: ['Ciberseguridad']
+        creditos:
+          type: integer
+          minimum: 0
+          description: Créditos académicos. Hay asignaturas de cero créditos.
+          examples: [3]
+
+    Programa:
+      type: object
+      description: Programa académico bajo el cual se inscribió la asignatura.
+      required: [codigo, nombre]
+      properties:
+        codigo:
+          type: string
+          examples: ['TEL']
+        nombre:
+          type: string
+          examples: ['Ingeniería Telemática']
+
+    MateriaMatriculada:
+      type: object
+      description: |
+        Una inscripción, no una asignatura. El programa, el NRC, el grupo y los estados son
+        atributos de la inscripción y no del catálogo (S-09, S-14). Invariantes: `PENDIENTE`
+        si y solo si `nota` nula, y `fechaCancelacion` si y solo si `CANCELADA`.
+      required:
+        [asignatura, nrc, grupo, programa, docente, estadoInscripcion, estadoCalificacion]
+      properties:
+        asignatura:
+          $ref: '#/components/schemas/Asignatura'
+        nrc:
+          type: string
+          description: |
+            Número de referencia del curso. Identifica el grupo de forma única dentro del
+            periodo. Ante discrepancia con el grupo, manda el NRC.
+          examples: ['11008']
+        grupo:
+          type: string
+          description: |
+            Número de grupo que el estudiante ve en su horario. Es etiqueta de presentación y
+            no identifica por sí solo.
+          examples: ['001']
+        programa:
+          $ref: '#/components/schemas/Programa'
+        docente:
+          type: string
+          examples: ['Ana María Restrepo']
+        estadoInscripcion:
+          $ref: '#/components/schemas/EstadoInscripcion'
+        estadoCalificacion:
+          $ref: '#/components/schemas/EstadoCalificacion'
+        nota:
+          type: [number, 'null']
+          minimum: 0.0
+          maximum: 5.0
+          multipleOf: 0.01
+          description: |
+            Nota en escala 0.0 a 5.0. Nula si y solo si el estado de calificación es
+            PENDIENTE.
+          examples: [4.2]
+        fechaCancelacion:
+          type: [string, 'null']
+          format: date
+          description: |
+            Fecha en que se canceló la inscripción. No nula si y solo si el estado de
+            inscripción es CANCELADA. La fecha separa una cancelación temprana de una tardía.
+          examples: ['2026-08-21']
+
+    EstadoInscripcion:
+      type: string
+      description: |
+        Si la inscripción sigue vigente o fue cancelada. Eje independiente del estado de
+        calificación: una cancelada puede traer nota parcial, y esa combinación es la señal de
+        alerta temprana (S-14). `INSCRITA` sigue vigente, `CANCELADA` se canceló en el periodo.
+      enum: [INSCRITA, CANCELADA]
+
+    EstadoCalificacion:
+      type: string
+      description: |
+        Hasta dónde llegó la calificación. No se deriva de la nota ni del estado de
+        inscripción (S-14). `PENDIENTE` sin nota cargada, `PARCIAL` acumulado a la fecha,
+        `DEFINITIVA` nota de cierre que ya no cambia.
+      enum: [PENDIENTE, PARCIAL, DEFINITIVA]
+
+    ProblemDetail:
+      type: object
+      description: Detalle de error según RFC 9457, `application/problem+json`.
+      properties:
+        type:
+          type: string
+          format: uri
+          examples: ['about:blank']
+        title:
+          type: string
+          examples: ['Not Found']
+        status:
+          type: integer
+          examples: [404]
+        detail:
+          type: string
+          examples: ['No existe un estudiante con código A00999999']
+        instance:
+          type: string
+          format: uri
+          examples: ['/api/v1/estudiantes/A00999999/matricula-actual']
+
+  responses:
+
+    SolicitudInvalida:
+      description: El código institucional no cumple el formato `A00NNNNNN` (S-11).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+    NoAutenticado:
+      description: |
+        Falta la credencial o no es válida. Se aplica en la Parte 3.1; la ejecución local
+        corre con la cadena de seguridad abierta.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+    NoAutorizado:
+      description: |
+        La credencial es válida pero no habilita a consultar a ese estudiante: cada estudiante
+        se consulta a sí mismo y el acompañante solo a los que tiene asignados (S-05).
+        Se aplica en la Parte 3.1.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+    NoEncontrado:
+      description: |
+        El código no corresponde a ningún estudiante. Un estudiante que existe y no ha
+        inscrito materias responde 200 con la lista vacía, no 404.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+    ErrorInterno:
+      description: Fallo no previsto del servicio.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'

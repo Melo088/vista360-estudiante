@@ -1,23 +1,35 @@
 package co.edu.icesi.vista360.config;
 
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class OpenApiConfig {
 
+    private static final String ESQUEMA_BEARER = "bearerAuth";
+
     @Bean
     OpenAPI apiVista360() {
-        return new OpenAPI().info(new Info()
-                .title("Vista 360 del Estudiante")
-                .version("v1")
-                .description("""
-                        Capa propia de la Universidad sobre el ecosistema existente.
-
-                        este documento describe un slice vertical con datos
-                        quemados en el controlador. El contrato es provisional y se define
-                        cuando se sepa que puede entregar el ERP."""));
+        return new OpenAPI()
+                .info(new Info()
+                        .title("Vista 360° del Estudiante")
+                        .version("v1")
+                        .description("""
+                                Capa propia de la Universidad sobre el ecosistema existente. El
+                                contrato de diseño vive en api/openapi.yaml."""))
+                .components(new Components().addSecuritySchemes(ESQUEMA_BEARER,
+                        new SecurityScheme()
+                                .type(SecurityScheme.Type.HTTP)
+                                .scheme("bearer")
+                                .bearerFormat("JWT")
+                                .description("""
+                                        Token emitido por la plataforma de identidad. Se propaga el
+                                        token de quien originó la petición (S-10).""")))
+                .addSecurityItem(new SecurityRequirement().addList(ESQUEMA_BEARER));
     }
 }

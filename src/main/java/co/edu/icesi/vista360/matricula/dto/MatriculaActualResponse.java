@@ -1,52 +1,147 @@
 package co.edu.icesi.vista360.matricula.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Respuesta de la matricula del periodo vigente. temporal hasta modelado de datos
+ * Matricula del periodo academico vigente.
+ * Devuelve el conjunto completo del periodo, canceladas incluidas, y expone el estado de
+ * cada inscripcion.
  */
-@Schema(name = "MatriculaActual", description = "Materias del periodo vigente con su nota")
+@Schema(name = "MatriculaActual", description = """
+        Materias del periodo académico vigente con el estado y la nota de cada una.
+        Incluye siempre las inscritas y las canceladas (S-14).""")
 public record MatriculaActualResponse(
 
-        @Schema(description = "Codigo institucional del estudiante", example = "A00123456")
+        @Schema(description = "Código institucional del estudiante (S-11)",
+                example = "A00123456", requiredMode = RequiredMode.REQUIRED)
         String estudianteId,
 
-        @Schema(description = "Periodo academico al que corresponde la matricula")
+        @Schema(description = "Periodo académico al que corresponde la matrícula",
+                requiredMode = RequiredMode.REQUIRED)
         Periodo periodo,
 
-        @Schema(description = "Materias inscritas. Vacia si esta matriculado pero aun no inscribe")
+        @Schema(description = """
+                Instante de la última sincronización. Lo académico es una réplica local
+                alimentada por sondeo (S-01, S-02).""",
+                example = "2026-08-30T04:15:00Z", requiredMode = RequiredMode.REQUIRED)
+        Instant actualizadoEn,
+
+        @Schema(description = """
+                Inscripciones del periodo. Vacía si el estudiante está matriculado y todavía
+                no inscribe materias.""",
+                requiredMode = RequiredMode.REQUIRED)
         List<Materia> materias) {
 
-    @Schema(name = "PeriodoAcademico")
+    @Schema(name = "PeriodoAcademico", description = "Periodo académico vigente")
     public record Periodo(
 
-            @Schema(description = "Codigo del periodo", example = "2026-02")
+            @Schema(description = "Año seguido del número de periodo", example = "202620",
+                    requiredMode = RequiredMode.REQUIRED)
             String codigo,
 
-            @Schema(example = "2026-07-27") LocalDate fechaInicio,
+            @Schema(example = "2026-07-27", requiredMode = RequiredMode.REQUIRED)
+            LocalDate fechaInicio,
 
-            @Schema(example = "2026-11-28") LocalDate fechaFin) {
+            @Schema(example = "2026-11-28", requiredMode = RequiredMode.REQUIRED)
+            LocalDate fechaFin) {
     }
 
-    @Schema(name = "MateriaMatriculada")
-    public record Materia(
+    @Schema(name = "Programa",
+            description = "Programa académico bajo el cual se inscribió la asignatura")
+    public record Programa(
 
-            @Schema(description = "Codigo de la asignatura", example = "TEL301")
+            @Schema(example = "TEL", requiredMode = RequiredMode.REQUIRED) String codigo,
+
+            @Schema(example = "Ingeniería Telemática", requiredMode = RequiredMode.REQUIRED)
+            String nombre) {
+    }
+
+    @Schema(name = "Asignatura", description = """
+            Datos de la asignatura en el catálogo.""")
+    public record Asignatura(
+
+            @Schema(description = "Código de la asignatura, cinco dígitos", example = "09780",
+                    requiredMode = RequiredMode.REQUIRED)
             String codigo,
 
-            @Schema(example = "Arquitectura de Software") String nombre,
+            @Schema(example = "Ciberseguridad", requiredMode = RequiredMode.REQUIRED)
+            String nombre,
 
-            @Schema(description = "Creditos academicos", example = "3") int creditos,
+            @Schema(description = "Créditos académicos", example = "3",
+                    requiredMode = RequiredMode.REQUIRED)
+            int creditos) {
+    }
 
-            @Schema(description = "Grupo o NRC", example = "01") String grupo,
+    @Schema(name = "MateriaMatriculada", description = """
+            El programa, el NRC, el grupo y los estados son atributos de la inscripción y no del catálogo (S-09, S-14).""")
+    public record Materia(
 
-            @Schema(example = "Ana Maria Restrepo") String docente,
+            @Schema(description = "Asignatura del catálogo que se inscribió",
+                    requiredMode = RequiredMode.REQUIRED)
+            Asignatura asignatura,
 
-            @Schema(description = "Nota en escala 0.0 a 5.0. Null si aun no hay calificacion",
+            @Schema(description = """
+                    Identifica el grupo de forma única dentro del periodo.""",
+                    example = "11008", requiredMode = RequiredMode.REQUIRED)
+            String nrc,
+
+            @Schema(description = """
+                    Número de grupo que el estudiante ve en su horario.""",
+                    example = "001", requiredMode = RequiredMode.REQUIRED)
+            String grupo,
+
+            @Schema(description = "Programa bajo el cual se inscribió esta asignatura",
+                    requiredMode = RequiredMode.REQUIRED)
+            Programa programa,
+
+            @Schema(example = "Ana María Restrepo", requiredMode = RequiredMode.REQUIRED)
+            String docente,
+
+            @Schema(description = """
+                    Si la inscripción sigue vigente o fue cancelada. Eje independiente
+                    del estado de calificación (S-14).""",
+                    requiredMode = RequiredMode.REQUIRED)
+            EstadoInscripcion estadoInscripcion,
+
+            @Schema(description = """
+                    Hasta dónde llegó la calificación. No se deriva de la nota ni del estado
+                    de inscripción (S-14).""",
+                    requiredMode = RequiredMode.REQUIRED)
+            EstadoCalificacion estadoCalificacion,
+
+            @Schema(description = """
+                    Nota en escala 0.0 a 5.0. Nula si y solo si el estado de calificación es
+                    PENDIENTE.""",
                     example = "4.2")
-            BigDecimal notaDefinitiva) {
+            BigDecimal nota,
+
+            @Schema(description = """
+                    Fecha en que se canceló la inscripción. No nula si y solo si el estado de
+                    inscripción es CANCELADA.""",
+                    example = "2026-08-21")
+            LocalDate fechaCancelacion) {
+    }
+
+    @Schema(name = "EstadoInscripcion", description = """
+            INSCRITA: la inscripción sigue vigente.
+            CANCELADA: el estudiante canceló la materia durante el periodo.""")
+    public enum EstadoInscripcion {
+        INSCRITA,
+        CANCELADA
+    }
+
+    @Schema(name = "EstadoCalificacion", description = """
+            PENDIENTE: todavía no hay nota cargada.
+            PARCIAL: hay nota acumulada y el periodo no ha cerrado para esa materia.
+            DEFINITIVA: la nota es la del cierre y no cambia.""")
+    public enum EstadoCalificacion {
+        PENDIENTE,
+        PARCIAL,
+        DEFINITIVA
     }
 }

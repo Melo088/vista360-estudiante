@@ -2,7 +2,7 @@
 
 Como se menciona, el enunciado dejó intencionalmente varias opciones abiertas. Este documento detalla dichas opciones, indicando dónde una elección específica modifica el diseño de la arquitectura o modelo de datos, junto con la justificación adoptada en cada caso.
 
-Cada supuesto recibe un identificador único que permite referenciarlos desde el resto de los entregables. Las cuatro primeras opciones condicionan a las demás, dado que definen qué información vive dentro de Vista 360°, de qué forma se entera la plataforma de un cambio en el ecosistema, por dónde viaja cada comunicación y qué se hace cuando el ERP no expone una API para los datos necesarios. Las otras nueve opciones son independientes entre sí.
+Cada supuesto recibe un identificador único que permite referenciarlos desde el resto de los entregables. Las cuatro primeras opciones condicionan a las demás, dado que definen qué información vive dentro de Vista 360°, de qué forma se entera la plataforma de un cambio en el ecosistema, por dónde viaja cada comunicación y qué se hace cuando el ERP no expone una API para los datos necesarios. Las otras diez opciones son independientes entre sí.
 
 ---
 
@@ -159,6 +159,18 @@ Cada supuesto recibe un identificador único que permite referenciarlos desde el
 **Si resultara falso.** Si el LMS no expone un resumen agregado y solo permite consultar eventos individuales, Vista 360° tendría que construir la agregación por su cuenta en un proceso programado, con el costo de mantener esa lógica sincronizada con los cambios del LMS.
 
 **Depende de este supuesto.** La tabla de actividad en el modelo de datos y la frescura declarada para ese dato en la tabla de trazabilidad.
+
+---
+
+## S-14 · Alcance de "materias matriculadas" e "inscritas actualmente"
+
+**Supuesto.** Las dos expresiones del enunciado nombran el mismo periodo académico vigente, es decir, "matriculadas" es el conjunto completo del periodo e "inscritas actualmente" el subconjunto que no fue cancelado. El servicio devuelve el conjunto completo con el estado de cada inscripción, así que el subconjunto vigente se obtiene filtrando por INSCRITA. Un estudiante matriculado que todavía no inscribe materias recibe una lista vacía; el código de no encontrado se reserva para el identificador que no corresponde a ningún estudiante.
+
+**Fundamento.** Incluir las materias canceladas aporta buen contexto para el equipo de acompañamiento. Al entregar el conjunto completo con su estado y fecha, se le da al cliente la flexibilidad de filtrar, evitando que el servidor oculte información de riesgo valiosa por omisión.
+
+**Si resultara falso.** Si la universidad exigiera que el servicio retorne únicamente las inscripciones activas por defecto, habría que agregar un parámetro explícito de filtrado. Si "matriculadas" implicara el historial de toda la carrera, se requeriría un endpoint distinto y paginado.
+
+**Depende de este supuesto.** El contrato del servicio de la Parte 2, el modelo de datos que lo soporta y la capacidad de detectar cancelaciones como señal de alerta temprana.
 
 ---
 

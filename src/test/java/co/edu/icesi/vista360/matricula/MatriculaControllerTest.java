@@ -9,19 +9,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import co.edu.icesi.vista360.config.SeguridadConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * Pruebas de contrato del endpoint. Fijan la forma de la respuesta.
  */
-@WebMvcTest(MatriculaController.class)
-@Import(SeguridadConfig.class)
+@SpringBootTest
+@AutoConfigureMockMvc
 class MatriculaControllerTest {
 
     private static final String RUTA = "/api/v1/estudiantes/{estudianteId}/matricula-actual";
@@ -103,6 +102,39 @@ class MatriculaControllerTest {
                         .value(contains("TEL")))
                 .andExpect(jsonPath("$.programas[?(@.principal==false)].codigo")
                         .value(contains("SIS")));
+    }
+
+    /** Matriculado y sin inscribir: 200 con lista vacia, nunca 404 (S-14). */
+    @Test
+    void elMatriculadoQueNoInscribioRecibeListaVacia() throws Exception {
+        mockMvc.perform(get(RUTA, "A00555000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.materias", hasSize(0)))
+                .andExpect(jsonPath("$.programas", hasSize(1)))
+                .andExpect(jsonPath("$.periodo.codigo").value("202620"));
+    }
+
+    /**
+     * El estudiante existe y no tiene ninguna matricula. Es el unico caso que alcanza este
+     * 404: con el respaldo del S-17, a quien solo le falta la del periodo vigente se le
+     * devuelve el ultimo periodo cursado.
+     */
+    @Test
+    void elEstudianteSinNingunaMatriculaRecibeUn404Distinguible() throws Exception {
+        mockMvc.perform(get(RUTA, "A00777111"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.detail").value(
+                        "El estudiante A00777111 no tiene ninguna matrícula registrada"));
+    }
+
+    /** El otro 404, con detalle propio para que el consumidor los separe. */
+    @Test
+    void elCodigoInexistenteRecibeElOtro404() throws Exception {
+        mockMvc.perform(get(RUTA, "A00999999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value(
+                        "No existe un estudiante con código A00999999"));
     }
 
     @Test

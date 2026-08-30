@@ -9,6 +9,9 @@ import java.util.List;
 
 /**
  * Matricula del periodo academico vigente.
+ *
+ * <p>Devuelve el conjunto completo del periodo, canceladas incluidas, y expone el estado de
+ * cada inscripcion. El razonamiento esta en el S-14 de docs/supuestos.md.
  */
 @Schema(name = "MatriculaActual", description = """
         Materias del periodo académico vigente con el estado y la nota de cada una.
